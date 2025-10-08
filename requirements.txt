@@ -23,7 +23,6 @@ pillow>=10.0.0
 
 # Async support
 aiohttp>=3.9.0
-asyncio
 
 # Utilities
 tqdm>=4.66.0
