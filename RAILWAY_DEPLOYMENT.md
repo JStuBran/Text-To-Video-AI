@@ -35,7 +35,6 @@ This guide will help you deploy your Text-to-Video AI application to Railway for
 2. **Configure Environment Variables**:
    ```
    OPENAI_API_KEY=your-openai-key
-   GROQ_API_KEY=your-groq-key
    PEXELS_API_KEY=your-pexels-key
    ELEVENLABS_API_KEY=your-elevenlabs-key
    ```
@@ -68,7 +67,6 @@ In Railway Dashboard:
 
 ```
 OPENAI_API_KEY=sk-your-openai-key
-GROQ_API_KEY=gsk_your-groq-key
 PEXELS_API_KEY=your-pexels-key
 ELEVENLABS_API_KEY=your-elevenlabs-key
 ```

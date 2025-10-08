@@ -10,7 +10,6 @@
    ```
    OPENAI_API_KEY=sk-your-openai-key
    ELEVENLABS_API_KEY=your-elevenlabs-key
-   GROQ_API_KEY=gsk_your-groq-key
    PEXELS_API_KEY=your-pexels-key
    ```
 

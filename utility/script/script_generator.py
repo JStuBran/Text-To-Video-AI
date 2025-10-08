@@ -2,16 +2,13 @@ import os
 from openai import OpenAI
 import json
 
-if os.environ.get("GROQ_API_KEY") and len(os.environ.get("GROQ_API_KEY")) > 30:
-    from groq import Groq
-    model = "mixtral-8x7b-32768"
-    client = Groq(
-        api_key=os.environ.get("GROQ_API_KEY"),
-        )
-else:
-    OPENAI_API_KEY = os.getenv('OPENAI_KEY')
-    model = "gpt-4o"
-    client = OpenAI(api_key=OPENAI_API_KEY)
+# Use OpenAI GPT-4o for script generation
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+if not OPENAI_API_KEY:
+    raise ValueError("OPENAI_API_KEY environment variable is required")
+
+client = OpenAI(api_key=OPENAI_API_KEY)
+model = "gpt-4o"
 
 def generate_script(topic):
     prompt = (
