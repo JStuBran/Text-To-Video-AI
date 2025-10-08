@@ -4,6 +4,10 @@ openai>=1.31.0
 requests>=2.32.0
 python-dotenv>=1.0.0
 
+# Web API dependencies
+flask>=2.3.0
+flask-cors>=4.0.0
+
 # Audio processing
 whisper-timestamped>=1.15.0
 moviepy>=1.0.3

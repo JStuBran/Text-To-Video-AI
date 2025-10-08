@@ -4,6 +4,11 @@ Test script to verify ElevenLabs TTS integration
 """
 import asyncio
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
 from utility.audio.audio_generator import generate_audio
 
 async def test_elevenlabs():
