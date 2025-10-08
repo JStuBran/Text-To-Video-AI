@@ -1,0 +1,36 @@
+# Lightweight requirements for Railway deployment
+# Core API dependencies only
+elevenlabs==2.16.0
+openai==2.2.0
+requests==2.32.5
+python-dotenv==1.1.1
+
+# Web API dependencies
+flask==3.1.2
+flask-cors==6.0.1
+
+# Lightweight audio processing (no Whisper)
+# whisper-timestamped==1.15.9  # Too heavy for Railway
+moviepy==2.2.1
+
+# Lightweight video processing
+imageio==2.37.0
+imageio-ffmpeg==0.6.0
+
+# Lightweight data processing
+numpy==2.3.3
+pillow==11.3.0
+
+# Async support
+aiohttp==3.13.0
+
+# Utilities
+tqdm==4.67.1
+pydantic==2.12.0
+tiktoken==0.12.0
+
+# Remove heavy dependencies:
+# - torch (900MB+)
+# - scipy (35MB+)
+# - whisper-timestamped (requires torch)
+# - CUDA libraries (2GB+)
