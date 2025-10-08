@@ -95,12 +95,28 @@ def generate_video_async(job_id, input_text):
 
 @app.route('/health', methods=['GET'])
 def health_check():
-    """Health check endpoint"""
-    return jsonify({
-        'status': 'healthy',
-        'timestamp': datetime.now().isoformat(),
-        'version': '1.0.0'
-    })
+    """Health check endpoint for Railway"""
+    try:
+        # Check if required environment variables are set
+        required_vars = ['OPENAI_API_KEY', 'ELEVENLABS_API_KEY']
+        missing_vars = [var for var in required_vars if not os.getenv(var)]
+        
+        status = 'healthy' if not missing_vars else 'degraded'
+        
+        return jsonify({
+            'status': status,
+            'timestamp': datetime.now().isoformat(),
+            'version': '1.0.0',
+            'port': os.environ.get('PORT', '5000'),
+            'missing_env_vars': missing_vars if missing_vars else None
+        }), 200 if status == 'healthy' else 503
+    except Exception as e:
+        return jsonify({
+            'status': 'unhealthy',
+            'timestamp': datetime.now().isoformat(),
+            'version': '1.0.0',
+            'error': str(e)
+        }), 503
 
 @app.route('/generate-video', methods=['POST'])
 def generate_video():

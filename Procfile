@@ -1,1 +1,1 @@
-web: python n8n_api.py
+web: ./start.sh
