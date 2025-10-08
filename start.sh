@@ -17,4 +17,4 @@ echo "✅ Environment variables are set"
 echo "🌐 Starting Flask app on port $PORT"
 
 # Start the application
-python n8n_api.py
+python n8n_api_light.py
