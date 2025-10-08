@@ -25,8 +25,9 @@ Run the following steps
 ```
 export OPENAI_KEY="api-key"
 export PEXELS_KEY="pexels-key"
+export ELEVENLABS_API_KEY="elevenlabs-api-key"
 
-pip install -r requirements.text
+pip install -r requirements.txt
 
 python app.py "Topic name"
 ```
@@ -39,7 +40,7 @@ Without going through the installation hastle here is a simple way to generate v
 
 For a simple way to run the code, checkout the [colab link](/Text_to_Video_example.ipynb)
 
-To generate a video, just click on all the cells one by one. Setup your api keys for openai and pexels
+To generate a video, just click on all the cells one by one. Setup your api keys for openai, pexels, and elevenlabs
 
 ## 💁 Contribution
 
