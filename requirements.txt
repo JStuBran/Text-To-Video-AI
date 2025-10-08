@@ -2,6 +2,7 @@
 elevenlabs>=1.7.0
 openai>=1.31.0
 requests>=2.32.0
+python-dotenv>=1.0.0
 
 # Audio processing
 whisper-timestamped>=1.15.0

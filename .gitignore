@@ -2,3 +2,13 @@
 venv/
 __pycache__/
 .DS_Store
+
+# Environment variables - NEVER commit these!
+.env
+.env.local
+.env.*.local
+
+# Generated files
+rendered_video.mp4
+audio_tts.wav
+test_audio.wav
