@@ -2,7 +2,7 @@ import os
 from openai import OpenAI
 import json
 
-if len(os.environ.get("GROQ_API_KEY")) > 30:
+if os.environ.get("GROQ_API_KEY") and len(os.environ.get("GROQ_API_KEY")) > 30:
     from groq import Groq
     model = "mixtral-8x7b-32768"
     client = Groq(
