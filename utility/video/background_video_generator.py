@@ -26,7 +26,19 @@ def search_videos(query_string, orientation_landscape=True):
 
 def getBestVideo(query_string, orientation_landscape=True, used_vids=[]):
     vids = search_videos(query_string, orientation_landscape)
-    videos = vids['videos']  # Extract the videos list from JSON
+    
+    # Handle different response formats from Pexels API
+    if 'videos' not in vids:
+        print(f"Warning: No 'videos' key in response for query '{query_string}'. Response: {vids}")
+        if isinstance(vids, list):
+            videos = vids  # Sometimes API returns list directly
+        elif 'data' in vids:
+            videos = vids['data']  # Alternative response format
+        else:
+            print(f"Error: Unexpected response format from Pexels API: {vids}")
+            return None
+    else:
+        videos = vids['videos']  # Extract the videos list from JSON
 
     # Filter and extract videos with width and height as 1920x1080 for landscape or 1080x1920 for portrait
     if orientation_landscape:

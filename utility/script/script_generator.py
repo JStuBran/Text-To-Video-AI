@@ -50,9 +50,28 @@ def generate_script(topic):
     try:
         script = json.loads(content)["script"]
     except Exception as e:
-        json_start_index = content.find('{')
-        json_end_index = content.rfind('}')
-        print(content)
-        content = content[json_start_index:json_end_index+1]
-        script = json.loads(content)["script"]
+        print(f"JSON parsing error: {e}")
+        print(f"Content: {content}")
+        try:
+            # Try to fix common escape issues
+            json_start_index = content.find('{')
+            json_end_index = content.rfind('}')
+            content_cleaned = content[json_start_index:json_end_index+1]
+            
+            # Fix common escape issues
+            content_cleaned = content_cleaned.replace('\\', '\\\\')  # Escape backslashes
+            content_cleaned = content_cleaned.replace('\\"', '"')   # Fix escaped quotes
+            content_cleaned = content_cleaned.replace('\\n', '\\\\n')  # Fix newlines
+            content_cleaned = content_cleaned.replace('\\t', '\\\\t')  # Fix tabs
+            
+            script = json.loads(content_cleaned)["script"]
+        except Exception as e2:
+            print(f"Fallback parsing also failed: {e2}")
+            # Last resort: extract content between quotes after "script":
+            import re
+            match = re.search(r'"script":\s*"([^"]*(?:\\"[^"]*)*)"', content)
+            if match:
+                script = match.group(1).replace('\\"', '"')
+            else:
+                raise Exception(f"Could not parse script from OpenAI response: {content}")
     return script
