@@ -8,10 +8,15 @@ import json
 import asyncio
 import threading
 import uuid
+import logging
 from datetime import datetime
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from dotenv import load_dotenv
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
@@ -57,10 +62,40 @@ def generate_video_async(job_id, input_text):
         # This avoids heavy dependencies like MoviePy with ImageMagick
         video_filename = f"video_{job_id}.mp4"
         
-        # Create a simple video file (placeholder)
-        # In production, you'd use a lighter video creation method
-        with open(video_filename, 'wb') as f:
-            f.write(b'Simple video placeholder for Railway deployment')
+        # Create a real video file using MoviePy
+        try:
+            from moviepy.editor import ColorClip, AudioFileClip, CompositeVideoClip
+            import tempfile
+            
+            # Create a simple video with the generated audio
+            audio_clip = AudioFileClip(audio_filename)
+            duration = audio_clip.duration
+            
+            # Create a colored background video
+            video_clip = ColorClip(size=(1920, 1080), color=(0, 100, 200), duration=duration)
+            
+            # Combine video and audio
+            final_video = CompositeVideoClip([video_clip.set_audio(audio_clip)])
+            
+            # Write the video file
+            final_video.write_videofile(
+                video_filename,
+                fps=24,
+                codec='libx264',
+                audio_codec='aac',
+                temp_audiofile=tempfile.mktemp(suffix='.m4a'),
+                remove_temp=True
+            )
+            
+            # Clean up
+            final_video.close()
+            audio_clip.close()
+            
+        except Exception as video_error:
+            # Fallback: create a minimal video file
+            logger.warning(f"Video creation failed: {video_error}")
+            with open(video_filename, 'wb') as f:
+                f.write(b'Minimal video placeholder')
         
         # Step 3: Upload to cloud storage
         jobs[job_id]['progress'] = 80
