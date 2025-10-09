@@ -24,17 +24,11 @@ load_dotenv()
 # Import only lightweight modules
 from utility.script.script_generator import generate_script
 from utility.audio.audio_generator import generate_audio
-# Full pipeline imports - try to import, fall back if unavailable
-try:
-    from utility.captions.timed_captions_generator import generate_timed_captions
-    from utility.video.background_video_generator import generate_video_url
-    from utility.render.render_engine import get_output_media
-    from utility.video.video_search_query_generator import getVideoSearchQueriesTimed, merge_empty_intervals
-    FULL_PIPELINE_AVAILABLE = True
-    logger.info("Full text-to-video pipeline modules loaded successfully")
-except ImportError as e:
-    logger.warning(f"Full pipeline modules not available: {e}")
-    FULL_PIPELINE_AVAILABLE = False
+# Full pipeline imports - required for proper text-to-video functionality
+from utility.captions.timed_captions_generator import generate_timed_captions
+from utility.video.background_video_generator import generate_video_url
+from utility.render.render_engine import get_output_media
+from utility.video.video_search_query_generator import getVideoSearchQueriesTimed, merge_empty_intervals
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for n8n integration
@@ -65,140 +59,33 @@ def generate_video_async(job_id, input_text):
         jobs[job_id]['current_step'] = 'Creating professional video...'
         video_filename = f"video_{job_id}.mp4"
         
-        try:
-            if FULL_PIPELINE_AVAILABLE:
-                logger.info("Using full text-to-video pipeline")
-                
-                # Generate timed captions from audio
-                jobs[job_id]['progress'] = 65
-                jobs[job_id]['current_step'] = 'Generating timed captions...'
-                timed_captions = generate_timed_captions(audio_filename)
-                logger.info(f"Generated {len(timed_captions)} timed captions")
-                
-                # Generate video search queries based on script + captions
-                jobs[job_id]['progress'] = 70
-                jobs[job_id]['current_step'] = 'Generating video search queries...'
-                timed_video_searches = getVideoSearchQueriesTimed(response, timed_captions)
-                logger.info(f"Generated {len(timed_video_searches)} video search queries")
-                
-                # Search and download Pexels videos
-                jobs[job_id]['progress'] = 75
-                jobs[job_id]['current_step'] = 'Searching Pexels for video clips...'
-                background_video_data = generate_video_url(timed_video_searches, "pexel")
-                background_video_data = merge_empty_intervals(background_video_data)
-                logger.info(f"Found {len(background_video_data)} video clips from Pexels")
-                
-                # Render final video with clips + audio + captions
-                jobs[job_id]['progress'] = 85
-                jobs[job_id]['current_step'] = 'Rendering final video...'
-                video_filename = get_output_media(audio_filename, timed_captions, background_video_data, "pexel")
-                logger.info("Professional video rendered successfully with Pexels clips")
-                
-            else:
-                raise ImportError("Full pipeline not available, falling back to simple video")
-                
-        except Exception as pipeline_error:
-            logger.warning(f"Full pipeline failed: {pipeline_error}, falling back to simple video")
-            
-            # Fallback: Create simple video with colored background
-            try:
-                # Import MoviePy with error handling
-                try:
-                    from moviepy.editor import ColorClip, AudioFileClip, CompositeVideoClip
-                    import tempfile
-                    moviepy_available = True
-                except ImportError as import_error:
-                    logger.error(f"MoviePy import failed: {import_error}")
-                    logger.error(f"Import error details: {str(import_error)}")
-                    moviepy_available = False
-                except Exception as import_error:
-                    logger.error(f"MoviePy import failed with unexpected error: {import_error}")
-                    logger.error(f"Error type: {type(import_error)}")
-                    moviepy_available = False
-                
-                if moviepy_available:
-                    # Create a simple video with the generated audio
-                    audio_clip = AudioFileClip(audio_filename)
-                    duration = audio_clip.duration
-                    
-                    # Create a colored background video
-                    video_clip = ColorClip(size=(1920, 1080), color=(0, 100, 200), duration=duration)
-                    
-                    # Combine video and audio
-                    final_video = CompositeVideoClip([video_clip.set_audio(audio_clip)])
-                    
-                    # Write the video file
-                    final_video.write_videofile(
-                        video_filename,
-                        fps=24,
-                        codec='libx264',
-                        audio_codec='aac',
-                        temp_audiofile=tempfile.mktemp(suffix='.m4a'),
-                        remove_temp=True,
-                        verbose=False,
-                        logger=None
-                    )
-                    
-                    # Clean up
-                    final_video.close()
-                    audio_clip.close()
-                    logger.info("Created simple video with colored background")
-                else:
-                    raise ImportError("MoviePy not available")
-                    
-            except Exception as video_error:
-                # Final fallback: create video using system ffmpeg
-                logger.warning(f"MoviePy video creation failed: {video_error}")
-                try:
-                    import subprocess
-                    
-                    # Get audio duration first
-                    duration_result = subprocess.run([
-                        'ffprobe', '-v', 'quiet', '-print_format', 'json', '-show_format', 
-                        audio_filename
-                    ], capture_output=True, text=True, timeout=10)
-                    
-                    duration = 30  # default fallback duration
-                    if duration_result.returncode == 0:
-                        try:
-                            import json
-                            probe_data = json.loads(duration_result.stdout)
-                            duration = float(probe_data['format']['duration'])
-                        except:
-                            pass
-                    
-                    # Create MP4 with colored background video + audio using system ffmpeg
-                    result = subprocess.run([
-                        'ffmpeg', 
-                        '-f', 'lavfi', '-i', f'color=c=blue:size=1920x1080:duration={duration}:rate=24',
-                        '-i', audio_filename,
-                        '-c:v', 'libx264', '-c:a', 'aac',
-                        '-b:v', '1000k', '-b:a', '128k',
-                        '-pix_fmt', 'yuv420p',
-                        '-shortest',
-                        video_filename, '-y'
-                    ], capture_output=True, text=True, timeout=60)
-                    
-                    if result.returncode == 0:
-                        logger.info("Created video with blue background using system ffmpeg")
-                    else:
-                        logger.warning(f"ffmpeg video creation failed: {result.stderr}")
-                        # Fallback to audio-only MP4
-                        result = subprocess.run([
-                            'ffmpeg', '-i', audio_filename, '-c:a', 'aac', 
-                            '-b:a', '128k', video_filename, '-y'
-                        ], capture_output=True, text=True, timeout=30)
-                        
-                        if result.returncode == 0:
-                            logger.info("Created audio-only MP4 using system ffmpeg")
-                        else:
-                            raise Exception(f"ffmpeg failed: {result.stderr}")
-                            
-                except Exception as ffmpeg_error:
-                    logger.warning(f"ffmpeg fallback failed: {ffmpeg_error}")
-                    # Final fallback: just copy the audio file as the "video"
-                    import shutil
-                    shutil.copy2(audio_filename, video_filename)
+        # Execute full text-to-video pipeline (no fallbacks)
+        logger.info("Using full text-to-video pipeline")
+        
+        # Generate timed captions from audio
+        jobs[job_id]['progress'] = 65
+        jobs[job_id]['current_step'] = 'Generating timed captions...'
+        timed_captions = generate_timed_captions(audio_filename)
+        logger.info(f"Generated {len(timed_captions)} timed captions")
+        
+        # Generate video search queries based on script + captions
+        jobs[job_id]['progress'] = 70
+        jobs[job_id]['current_step'] = 'Generating video search queries...'
+        timed_video_searches = getVideoSearchQueriesTimed(response, timed_captions)
+        logger.info(f"Generated {len(timed_video_searches)} video search queries")
+        
+        # Search and download Pexels videos
+        jobs[job_id]['progress'] = 75
+        jobs[job_id]['current_step'] = 'Searching Pexels for video clips...'
+        background_video_data = generate_video_url(timed_video_searches, "pexel")
+        background_video_data = merge_empty_intervals(background_video_data)
+        logger.info(f"Found {len(background_video_data)} video clips from Pexels")
+        
+        # Render final video with clips + audio + captions
+        jobs[job_id]['progress'] = 85
+        jobs[job_id]['current_step'] = 'Rendering final video...'
+        video_filename = get_output_media(audio_filename, timed_captions, background_video_data, "pexel")
+        logger.info("Professional video rendered successfully with Pexels clips")
         
         # Step 3: Upload to cloud storage
         jobs[job_id]['progress'] = 80
@@ -231,24 +118,38 @@ def generate_video_async(job_id, input_text):
         jobs[job_id]['status'] = 'error'
         jobs[job_id]['error'] = str(e)
         jobs[job_id]['current_step'] = f'Error: {str(e)}'
+        logger.error(f"Text-to-video pipeline failed for job {job_id}: {str(e)}", exc_info=True)
 
 @app.route('/health', methods=['GET'])
 def health_check():
     """Health check endpoint for Railway"""
     try:
         # Check if required environment variables are set
-        required_vars = ['OPENAI_API_KEY', 'ELEVENLABS_API_KEY']
+        required_vars = ['OPENAI_API_KEY', 'ELEVENLABS_API_KEY', 'PEXELS_API_KEY']
         missing_vars = [var for var in required_vars if not os.getenv(var)]
         
-        status = 'healthy' if not missing_vars else 'degraded'
+        # Check if all pipeline dependencies are available
+        pipeline_issues = []
+        try:
+            import whisper_timestamped
+        except ImportError:
+            pipeline_issues.append("whisper-timestamped not available")
+        
+        try:
+            from moviepy.editor import VideoFileClip
+        except ImportError:
+            pipeline_issues.append("moviepy not available")
+        
+        status = 'healthy' if not missing_vars and not pipeline_issues else 'degraded'
         
         return jsonify({
             'status': status,
             'timestamp': datetime.now().isoformat(),
-            'version': '1.0.0-light',
+            'version': '1.0.0-full-pipeline',
             'port': os.environ.get('PORT', '5000'),
             'missing_env_vars': missing_vars if missing_vars else None,
-            'deployment': 'railway-light'
+            'pipeline_issues': pipeline_issues if pipeline_issues else None,
+            'deployment': 'railway-full-pipeline'
         }), 200 if status == 'healthy' else 503
     except Exception as e:
         return jsonify({
