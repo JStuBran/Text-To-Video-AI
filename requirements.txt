@@ -13,7 +13,7 @@ flask-cors==6.0.1
 # whisper-timestamped==1.15.9  # Too heavy for Railway
 moviepy==2.2.1
 
-# Lightweight video processing
+# Video processing dependencies for MoviePy
 imageio==2.37.0
 imageio-ffmpeg==0.6.0
 
