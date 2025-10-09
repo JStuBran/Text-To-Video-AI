@@ -19,9 +19,9 @@ imageio-ffmpeg==0.6.0
 decorator==5.1.1
 proglog==0.1.10
 
-# Lightweight data processing
-numpy==2.3.3
-pillow==11.3.0
+# Lightweight data processing (Python 3.10 compatible)
+numpy==1.26.4
+pillow==10.4.0
 
 # Async support
 aiohttp==3.13.0
