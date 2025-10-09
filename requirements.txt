@@ -29,6 +29,9 @@ tqdm==4.67.1
 pydantic==2.12.0
 tiktoken==0.12.0
 
+# Cloud Storage
+boto3==1.35.0
+
 # Remove heavy dependencies:
 # - torch (900MB+)
 # - scipy (35MB+)

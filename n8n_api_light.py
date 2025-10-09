@@ -62,11 +62,32 @@ def generate_video_async(job_id, input_text):
         with open(video_filename, 'wb') as f:
             f.write(b'Simple video placeholder for Railway deployment')
         
-        jobs[job_id]['progress'] = 100
-        jobs[job_id]['status'] = 'completed'
-        jobs[job_id]['current_step'] = 'Video ready!'
-        jobs[job_id]['video_file'] = video_filename
-        jobs[job_id]['audio_file'] = audio_filename
+        # Step 3: Upload to cloud storage
+        jobs[job_id]['progress'] = 80
+        jobs[job_id]['current_step'] = 'Uploading to cloud storage...'
+        
+        try:
+            from utility.storage.cloud_storage import upload_video_to_cloud
+            
+            # Upload to cloud storage
+            cloud_result = upload_video_to_cloud(video_filename, job_id, provider='s3')
+            
+            if cloud_result.get('success'):
+                jobs[job_id]['progress'] = 100
+                jobs[job_id]['status'] = 'completed'
+                jobs[job_id]['video_url'] = cloud_result['url']
+                jobs[job_id]['current_step'] = 'Video uploaded to cloud storage!'
+                
+                # Clean up local file
+                if os.path.exists(video_filename):
+                    os.remove(video_filename)
+            else:
+                raise Exception(f"Cloud upload failed: {cloud_result.get('error', 'Unknown error')}")
+                
+        except Exception as cloud_error:
+            jobs[job_id]['status'] = 'error'
+            jobs[job_id]['error'] = f"Cloud upload failed: {str(cloud_error)}"
+            jobs[job_id]['current_step'] = f'Error: {str(cloud_error)}'
         
     except Exception as e:
         jobs[job_id]['status'] = 'error'
@@ -145,7 +166,7 @@ def get_job_status(job_id):
 
 @app.route('/download-video/<job_id>', methods=['GET'])
 def download_video(job_id):
-    """Download completed video"""
+    """Download completed video or return cloud URL"""
     if job_id not in jobs:
         return jsonify({'error': 'Job not found'}), 404
     
@@ -153,11 +174,22 @@ def download_video(job_id):
     if job['status'] != 'completed':
         return jsonify({'error': 'Video not ready yet'}), 400
     
-    video_file = job.get('video_file')
-    if not video_file or not os.path.exists(video_file):
-        return jsonify({'error': 'Video file not found'}), 404
+    # Check if video is stored in cloud
+    if 'video_url' in job:
+        # Return cloud URL instead of downloading
+        return jsonify({
+            'job_id': job_id,
+            'video_url': job['video_url'],
+            'message': 'Video is available at the provided URL',
+            'download_url': job['video_url']
+        })
     
-    return send_file(video_file, as_attachment=True, download_name=f'video_{job_id}.mp4')
+    # Fallback: return local file if exists
+    video_file = job.get('video_file')
+    if video_file and os.path.exists(video_file):
+        return send_file(video_file, as_attachment=True, download_name=f'video_{job_id}.mp4')
+    
+    return jsonify({'error': 'Video file not found'}), 404
 
 @app.route('/jobs', methods=['GET'])
 def list_jobs():
