@@ -1,0 +1,8 @@
+[phases.install]
+nixPkgs = ["python39", "ffmpeg", "pkg-config"]
+
+[phases.setup]
+nixPkgs = ["python39", "pip"]
+
+[variables]
+FFMPEG_BINARY = "/nix/store/.../bin/ffmpeg"

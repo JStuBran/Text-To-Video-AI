@@ -64,38 +64,64 @@ def generate_video_async(job_id, input_text):
         
         # Create a real video file using MoviePy
         try:
-            from moviepy.editor import ColorClip, AudioFileClip, CompositeVideoClip
-            import tempfile
+            # Import MoviePy with error handling
+            try:
+                from moviepy.editor import ColorClip, AudioFileClip, CompositeVideoClip
+                import tempfile
+                moviepy_available = True
+            except ImportError as import_error:
+                logger.warning(f"MoviePy import failed: {import_error}")
+                moviepy_available = False
             
-            # Create a simple video with the generated audio
-            audio_clip = AudioFileClip(audio_filename)
-            duration = audio_clip.duration
-            
-            # Create a colored background video
-            video_clip = ColorClip(size=(1920, 1080), color=(0, 100, 200), duration=duration)
-            
-            # Combine video and audio
-            final_video = CompositeVideoClip([video_clip.set_audio(audio_clip)])
-            
-            # Write the video file
-            final_video.write_videofile(
-                video_filename,
-                fps=24,
-                codec='libx264',
-                audio_codec='aac',
-                temp_audiofile=tempfile.mktemp(suffix='.m4a'),
-                remove_temp=True
-            )
-            
-            # Clean up
-            final_video.close()
-            audio_clip.close()
+            if moviepy_available:
+                # Create a simple video with the generated audio
+                audio_clip = AudioFileClip(audio_filename)
+                duration = audio_clip.duration
+                
+                # Create a colored background video
+                video_clip = ColorClip(size=(1920, 1080), color=(0, 100, 200), duration=duration)
+                
+                # Combine video and audio
+                final_video = CompositeVideoClip([video_clip.set_audio(audio_clip)])
+                
+                # Write the video file
+                final_video.write_videofile(
+                    video_filename,
+                    fps=24,
+                    codec='libx264',
+                    audio_codec='aac',
+                    temp_audiofile=tempfile.mktemp(suffix='.m4a'),
+                    remove_temp=True,
+                    verbose=False,
+                    logger=None
+                )
+                
+                # Clean up
+                final_video.close()
+                audio_clip.close()
+            else:
+                raise ImportError("MoviePy not available")
             
         except Exception as video_error:
-            # Fallback: create a minimal video file
+            # Fallback: create audio-only MP4 using ffmpeg if available
             logger.warning(f"Video creation failed: {video_error}")
-            with open(video_filename, 'wb') as f:
-                f.write(b'Minimal video placeholder')
+            try:
+                import subprocess
+                # Try to create MP4 with just audio using system ffmpeg
+                result = subprocess.run([
+                    'ffmpeg', '-i', audio_filename, '-c:a', 'aac', 
+                    '-b:a', '128k', video_filename, '-y'
+                ], capture_output=True, text=True, timeout=30)
+                
+                if result.returncode == 0:
+                    logger.info("Created audio-only MP4 using system ffmpeg")
+                else:
+                    raise Exception(f"ffmpeg failed: {result.stderr}")
+            except Exception as ffmpeg_error:
+                logger.warning(f"ffmpeg fallback failed: {ffmpeg_error}")
+                # Final fallback: just copy the audio file as the "video"
+                import shutil
+                shutil.copy2(audio_filename, video_filename)
         
         # Step 3: Upload to cloud storage
         jobs[job_id]['progress'] = 80
