@@ -6,15 +6,35 @@ import platform
 import subprocess
 import requests
 
-# Import MoviePy with error handling
+# Import MoviePy with comprehensive error handling
 try:
+    # Test basic import first
+    import moviepy
+    print(f"MoviePy package found at: {moviepy.__file__}")
+    print(f"MoviePy version: {moviepy.__version__}")
+    
+    # Import required modules
     from moviepy.editor import (AudioFileClip, CompositeVideoClip, CompositeAudioClip, ImageClip,
                                 TextClip, VideoFileClip)
     from moviepy.audio.fx.audio_loop import audio_loop
     from moviepy.audio.fx.audio_normalize import audio_normalize
     MOVIEPY_AVAILABLE = True
+    print("MoviePy successfully imported")
 except ImportError as e:
-    print(f"WARNING: MoviePy not available - {e}")
+    print(f"CRITICAL: MoviePy import failed - {e}")
+    print(f"Python path: {os.path.dirname(__file__)}")
+    import sys
+    print(f"Python executable: {sys.executable}")
+    print(f"Python version: {sys.version}")
+    print("Available packages:")
+    try:
+        import pkg_resources
+        installed_packages = [d.project_name for d in pkg_resources.working_set]
+        print(f"Total packages: {len(installed_packages)}")
+        moviepy_packages = [p for p in installed_packages if 'moviepy' in p.lower()]
+        print(f"MoviePy-related packages: {moviepy_packages}")
+    except:
+        print("Could not list installed packages")
     MOVIEPY_AVAILABLE = False
 
 def download_file(url, filename):

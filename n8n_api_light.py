@@ -25,10 +25,23 @@ load_dotenv()
 from utility.script.script_generator import generate_script
 from utility.audio.audio_generator import generate_audio
 # Full pipeline imports - required for proper text-to-video functionality
-from utility.captions.timed_captions_generator import generate_timed_captions
-from utility.video.background_video_generator import generate_video_url
-from utility.render.render_engine import get_output_media
-from utility.video.video_search_query_generator import getVideoSearchQueriesTimed, merge_empty_intervals
+try:
+    from utility.captions.timed_captions_generator import generate_timed_captions
+    from utility.video.background_video_generator import generate_video_url
+    from utility.render.render_engine import get_output_media
+    from utility.video.video_search_query_generator import getVideoSearchQueriesTimed, merge_empty_intervals
+    PIPELINE_AVAILABLE = True
+    logger.info("Full text-to-video pipeline loaded successfully")
+except ImportError as e:
+    logger.error(f"CRITICAL: Pipeline import failed - {e}")
+    PIPELINE_AVAILABLE = False
+    
+    # Define dummy functions to prevent crashes
+    def generate_timed_captions(*args): raise ImportError("Pipeline not available")
+    def generate_video_url(*args): raise ImportError("Pipeline not available") 
+    def get_output_media(*args): raise ImportError("Pipeline not available")
+    def getVideoSearchQueriesTimed(*args): raise ImportError("Pipeline not available")
+    def merge_empty_intervals(*args): raise ImportError("Pipeline not available")
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for n8n integration
@@ -39,6 +52,14 @@ jobs = {}
 def generate_video_async(job_id, input_text):
     """Generate video asynchronously - Railway lightweight version"""
     try:
+        # Check if pipeline is available before starting
+        if not PIPELINE_AVAILABLE:
+            jobs[job_id]['status'] = 'error'
+            jobs[job_id]['error'] = 'Full pipeline not available - MoviePy import failed'
+            jobs[job_id]['current_step'] = 'Error: Pipeline dependencies not available'
+            logger.error(f"Pipeline unavailable for job {job_id}")
+            return
+            
         jobs[job_id]['status'] = 'processing'
         jobs[job_id]['progress'] = 0
         
@@ -130,6 +151,9 @@ def health_check():
         
         # Check if all pipeline dependencies are available
         pipeline_issues = []
+        if not PIPELINE_AVAILABLE:
+            pipeline_issues.append("Full pipeline not available - check MoviePy installation")
+        
         try:
             import whisper_timestamped
         except ImportError:
@@ -140,7 +164,7 @@ def health_check():
         except ImportError:
             pipeline_issues.append("moviepy not available")
         
-        status = 'healthy' if not missing_vars and not pipeline_issues else 'degraded'
+        status = 'healthy' if not missing_vars and not pipeline_issues and PIPELINE_AVAILABLE else 'degraded'
         
         return jsonify({
             'status': status,
