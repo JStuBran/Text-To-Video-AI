@@ -4,11 +4,18 @@ import tempfile
 import zipfile
 import platform
 import subprocess
-from moviepy.editor import (AudioFileClip, CompositeVideoClip, CompositeAudioClip, ImageClip,
-                            TextClip, VideoFileClip)
-from moviepy.audio.fx.audio_loop import audio_loop
-from moviepy.audio.fx.audio_normalize import audio_normalize
 import requests
+
+# Import MoviePy with error handling
+try:
+    from moviepy.editor import (AudioFileClip, CompositeVideoClip, CompositeAudioClip, ImageClip,
+                                TextClip, VideoFileClip)
+    from moviepy.audio.fx.audio_loop import audio_loop
+    from moviepy.audio.fx.audio_normalize import audio_normalize
+    MOVIEPY_AVAILABLE = True
+except ImportError as e:
+    print(f"WARNING: MoviePy not available - {e}")
+    MOVIEPY_AVAILABLE = False
 
 def download_file(url, filename):
     with open(filename, 'wb') as f:
@@ -30,6 +37,9 @@ def get_program_path(program_name):
     return program_path
 
 def get_output_media(audio_file_path, timed_captions, background_video_data, video_server):
+    if not MOVIEPY_AVAILABLE:
+        raise ImportError("MoviePy is required for video rendering but is not available. Please check your deployment configuration.")
+    
     OUTPUT_FILE_NAME = "rendered_video.mp4"
     magick_path = get_program_path("magick")
     print(magick_path)
@@ -39,10 +49,12 @@ def get_output_media(audio_file_path, timed_captions, background_video_data, vid
         os.environ['IMAGEMAGICK_BINARY'] = '/usr/bin/convert'
     
     visual_clips = []
+    downloaded_files = []
     for (t1, t2), video_url in background_video_data:
         # Download the video file
         video_filename = tempfile.NamedTemporaryFile(delete=False).name
         download_file(video_url, video_filename)
+        downloaded_files.append(video_filename)
         
         # Create VideoFileClip from the downloaded file
         video_clip = VideoFileClip(video_filename)
@@ -71,8 +83,10 @@ def get_output_media(audio_file_path, timed_captions, background_video_data, vid
     video.write_videofile(OUTPUT_FILE_NAME, codec='libx264', audio_codec='aac', fps=25, preset='veryfast')
     
     # Clean up downloaded files
-    for (t1, t2), video_url in background_video_data:
-        video_filename = tempfile.NamedTemporaryFile(delete=False).name
-        os.remove(video_filename)
+    for video_filename in downloaded_files:
+        try:
+            os.remove(video_filename)
+        except OSError:
+            pass  # File may have already been cleaned up
 
     return OUTPUT_FILE_NAME
