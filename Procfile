@@ -1,1 +1,1 @@
-web: python debug_imports.py
+web: python minimal_test.py
