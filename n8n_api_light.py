@@ -70,7 +70,12 @@ def generate_video_async(job_id, input_text):
                 import tempfile
                 moviepy_available = True
             except ImportError as import_error:
-                logger.warning(f"MoviePy import failed: {import_error}")
+                logger.error(f"MoviePy import failed: {import_error}")
+                logger.error(f"Import error details: {str(import_error)}")
+                moviepy_available = False
+            except Exception as import_error:
+                logger.error(f"MoviePy import failed with unexpected error: {import_error}")
+                logger.error(f"Error type: {type(import_error)}")
                 moviepy_available = False
             
             if moviepy_available:
