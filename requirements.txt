@@ -9,8 +9,8 @@ python-dotenv==1.1.1
 flask==3.1.2
 flask-cors==6.0.1
 
-# Lightweight audio processing (no Whisper)
-# whisper-timestamped==1.15.9  # Too heavy for Railway
+# Audio processing for full pipeline (optional - will fallback if unavailable)
+whisper-timestamped==1.15.9
 moviepy==2.2.1
 
 # Video processing dependencies for MoviePy
