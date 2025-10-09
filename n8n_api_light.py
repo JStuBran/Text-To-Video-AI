@@ -112,16 +112,49 @@ def generate_video_async(job_id, input_text):
             logger.warning(f"Video creation failed: {video_error}")
             try:
                 import subprocess
-                # Try to create MP4 with just audio using system ffmpeg
+                
+                # Get audio duration first
+                duration_result = subprocess.run([
+                    'ffprobe', '-v', 'quiet', '-print_format', 'json', '-show_format', 
+                    audio_filename
+                ], capture_output=True, text=True, timeout=10)
+                
+                duration = 30  # default fallback duration
+                if duration_result.returncode == 0:
+                    try:
+                        import json
+                        probe_data = json.loads(duration_result.stdout)
+                        duration = float(probe_data['format']['duration'])
+                    except:
+                        pass
+                
+                # Create MP4 with colored background video + audio using system ffmpeg
                 result = subprocess.run([
-                    'ffmpeg', '-i', audio_filename, '-c:a', 'aac', 
-                    '-b:a', '128k', video_filename, '-y'
-                ], capture_output=True, text=True, timeout=30)
+                    'ffmpeg', 
+                    '-f', 'lavfi', '-i', f'color=c=blue:size=1920x1080:duration={duration}:rate=24',
+                    '-i', audio_filename,
+                    '-c:v', 'libx264', '-c:a', 'aac',
+                    '-b:v', '1000k', '-b:a', '128k',
+                    '-pix_fmt', 'yuv420p',
+                    '-shortest',
+                    video_filename, '-y'
+                ], capture_output=True, text=True, timeout=60)
                 
                 if result.returncode == 0:
-                    logger.info("Created audio-only MP4 using system ffmpeg")
+                    logger.info("Created video with blue background using system ffmpeg")
                 else:
-                    raise Exception(f"ffmpeg failed: {result.stderr}")
+                    logger.warning(f"ffmpeg video creation failed: {result.stderr}")
+                    # Fallback to audio-only MP4
+                    result = subprocess.run([
+                        'ffmpeg', '-i', audio_filename, '-c:a', 'aac', 
+                        '-b:a', '128k', video_filename, '-y'
+                    ], capture_output=True, text=True, timeout=30)
+                    
+                    if result.returncode == 0:
+                        logger.info("Created audio-only MP4 using system ffmpeg")
+                    else:
+                        raise Exception(f"ffmpeg failed: {result.stderr}")
+                        
             except Exception as ffmpeg_error:
                 logger.warning(f"ffmpeg fallback failed: {ffmpeg_error}")
                 # Final fallback: just copy the audio file as the "video"
