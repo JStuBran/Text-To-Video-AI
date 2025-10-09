@@ -262,7 +262,7 @@ def cleanup_job(job_id):
     })
 
 if __name__ == '__main__':
-    print("🚀 Starting Railway Lightweight n8n Text-to-Video API...")
+    print("🚀 Starting Railway Pro n8n Text-to-Video API...")
     print("📡 API Endpoints:")
     print("  POST /generate-video - Start video generation")
     print("  GET  /job-status/<job_id> - Check job status")
