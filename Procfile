@@ -1,1 +1,1 @@
-web: python n8n_api_light.py
+web: python debug_imports.py
