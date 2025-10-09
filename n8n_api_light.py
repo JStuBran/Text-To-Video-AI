@@ -85,6 +85,22 @@ print("✅ Flask application created successfully")
 # In-memory storage for job status (in production, use Redis or database)
 jobs = {}
 
+@app.route('/')
+def root():
+    """Root endpoint for basic connectivity testing"""
+    return jsonify({
+        'message': 'Text-to-Video AI API is running',
+        'status': 'online',
+        'timestamp': datetime.now().isoformat(),
+        'version': '1.0.0-railway',
+        'endpoints': {
+            'health': '/health',
+            'generate_video': '/generate-video',
+            'job_status': '/job-status/<job_id>',
+            'download_video': '/download-video/<job_id>'
+        }
+    })
+
 def generate_video_async(job_id, input_text):
     """Generate video asynchronously - Railway lightweight version"""
     try:
