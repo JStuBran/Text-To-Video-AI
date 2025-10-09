@@ -16,7 +16,7 @@ This guide will help you deploy your Text-to-Video AI application to Railway for
 - ✅ `railway.json` - Railway configuration
 - ✅ `Procfile` - Process definition
 - ✅ `requirements.txt` - Python dependencies
-- ✅ `n8n_api.py` - Updated for Railway (uses PORT environment variable)
+- ✅ `n8n_api_light.py` - Railway-optimized API (uses PORT environment variable)
 
 ### Required Files:
 - ✅ `.env` - Environment variables (will be configured in Railway)

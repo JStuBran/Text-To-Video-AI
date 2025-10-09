@@ -29,7 +29,7 @@ export ELEVENLABS_API_KEY="elevenlabs-api-key"
 
 pip install -r requirements.txt
 
-python app.py "Topic name"
+python n8n_api_light.py
 ```
 
 Output will be generated in rendered_video.mp4

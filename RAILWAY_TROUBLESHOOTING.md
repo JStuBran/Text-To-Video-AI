@@ -19,7 +19,7 @@
 
 ### **3. Build Dependencies**
 **Problem:** Missing system dependencies
-**Solution:** ✅ Fixed - Using `requirements-railway.txt` with pinned versions
+**Solution:** ✅ Fixed - Using `requirements.txt` with pinned versions
 
 ### **4. Startup Time**
 **Problem:** App takes too long to start
@@ -59,7 +59,7 @@ Expected response:
 - Railway handles this automatically
 
 #### **"Module not found"**
-- Check `requirements-railway.txt` is being used
+- Check `requirements.txt` is being used
 
 #### **"Permission denied"**
 - Startup script has execute permissions
@@ -103,7 +103,7 @@ railway up
 export PORT=5000
 export OPENAI_API_KEY=your-key
 export ELEVENLABS_API_KEY=your-key
-python n8n_api.py
+python n8n_api_light.py
 ```
 
 ## ✅ **Success Indicators**

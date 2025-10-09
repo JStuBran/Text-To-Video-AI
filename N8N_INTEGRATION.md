@@ -7,14 +7,15 @@ This guide explains how to integrate the Text-to-Video AI with n8n workflows.
 ### 1. Start the API Server
 ```bash
 cd "/Users/jasonbrander/text to/Text-To-Video-AI"
-python3 n8n_api.py
+python3 n8n_api_light.py
 ```
 
 The API will be available at `http://localhost:5000`
 
 ### 2. Test the Integration
 ```bash
-python3 test_n8n_api.py
+# Test with curl instead
+curl -X POST http://localhost:5000/generate-video -H "Content-Type: application/json" -d '{"text": "Test video"}'
 ```
 
 ## 📡 API Endpoints
