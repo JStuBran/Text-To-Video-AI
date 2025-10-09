@@ -1,2 +1,2 @@
 [phases.setup]
-nixPkgs = ["python310", "ffmpeg", "pkg-config", "imagemagick"]
+nixPkgs = ["...", "ffmpeg", "imagemagick"]
