@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
-Railway-optimized n8n Integration API for Text-to-Video AI
+Railway-optimized n8n Integration API for Text-to-Video AI  
 Lightweight version without heavy dependencies
 """
+print("🚀 Starting Text-to-Video AI application...")
 import os
 import json
 import asyncio
@@ -10,29 +11,62 @@ import threading
 import uuid
 import logging
 from datetime import datetime
+print("✅ Core imports successful")
+
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from dotenv import load_dotenv
+print("✅ Flask imports successful")
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+print("✅ Logging configured")
 
 # Load environment variables
 load_dotenv()
+print("✅ Environment variables loaded")
 
-# Import only lightweight modules
-from utility.script.script_generator import generate_script
-from utility.audio.audio_generator import generate_audio
-# Full pipeline imports - required for proper text-to-video functionality
+# Import lightweight modules with error handling
+print("📦 Loading utility modules...")
 try:
+    print("  • Importing script generator...")
+    from utility.script.script_generator import generate_script
+    SCRIPT_AVAILABLE = True
+    print("  ✅ Script generator loaded")
+except ImportError as e:
+    print(f"  ❌ Script generator failed: {e}")
+    logger.error(f"Script generator import failed: {e}")
+    SCRIPT_AVAILABLE = False
+    def generate_script(*args): raise ImportError("Script generator not available")
+
+try:
+    print("  • Importing audio generator...")
+    from utility.audio.audio_generator import generate_audio
+    AUDIO_AVAILABLE = True
+    print("  ✅ Audio generator loaded")
+except ImportError as e:
+    print(f"  ❌ Audio generator failed: {e}")
+    logger.error(f"Audio generator import failed: {e}")
+    AUDIO_AVAILABLE = False
+    def generate_audio(*args): raise ImportError("Audio generator not available")
+
+# Full pipeline imports - required for proper text-to-video functionality
+print("🎬 Loading full text-to-video pipeline...")
+try:
+    print("  • Importing timed captions generator...")
     from utility.captions.timed_captions_generator import generate_timed_captions
+    print("  • Importing video background generator...")
     from utility.video.background_video_generator import generate_video_url
+    print("  • Importing render engine...")
     from utility.render.render_engine import get_output_media
+    print("  • Importing video search query generator...")
     from utility.video.video_search_query_generator import getVideoSearchQueriesTimed, merge_empty_intervals
     PIPELINE_AVAILABLE = True
+    print("  ✅ Full text-to-video pipeline loaded successfully")
     logger.info("Full text-to-video pipeline loaded successfully")
 except ImportError as e:
+    print(f"  ❌ Pipeline import failed: {e}")
     logger.error(f"CRITICAL: Pipeline import failed - {e}")
     PIPELINE_AVAILABLE = False
     
@@ -43,8 +77,10 @@ except ImportError as e:
     def getVideoSearchQueriesTimed(*args): raise ImportError("Pipeline not available")
     def merge_empty_intervals(*args): raise ImportError("Pipeline not available")
 
+print("🌐 Creating Flask application...")
 app = Flask(__name__)
 CORS(app)  # Enable CORS for n8n integration
+print("✅ Flask application created successfully")
 
 # In-memory storage for job status (in production, use Redis or database)
 jobs = {}
