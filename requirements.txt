@@ -16,6 +16,8 @@ moviepy==2.2.1
 # Video processing dependencies for MoviePy
 imageio==2.37.0
 imageio-ffmpeg==0.6.0
+decorator==5.1.1
+proglog==0.1.10
 
 # Lightweight data processing
 numpy==2.3.3
