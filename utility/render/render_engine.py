@@ -107,10 +107,15 @@ def get_output_media(audio_file_path, timed_captions, background_video_data, vid
         try:
             # Create VideoFileClip from the downloaded file
             video_clip = VideoFileClip(video_filename)
+            
+            # Ensure standard dimensions and resize if needed
+            if video_clip.w != 1920 or video_clip.h != 1080:
+                video_clip = video_clip.resize((1920, 1080))
+                
             video_clip = video_clip.set_start(t1)
             video_clip = video_clip.set_end(t2)
             visual_clips.append(video_clip)
-            print(f"Successfully processed video clip for segment {t1}-{t2}")
+            print(f"Successfully processed video clip for segment {t1}-{t2} (size: {video_clip.w}x{video_clip.h})")
         except Exception as e:
             print(f"Failed to process video file {video_filename} for segment {t1}-{t2}: {e}")
             # Remove the corrupted file from the list so it gets cleaned up
@@ -141,7 +146,16 @@ def get_output_media(audio_file_path, timed_captions, background_video_data, vid
         video.duration = audio.duration
         video.audio = audio
 
-    video.write_videofile(OUTPUT_FILE_NAME, codec='libx264', audio_codec='aac', fps=25, preset='veryfast')
+    # Use more compatible video encoding settings for Railway/Docker environment
+    video.write_videofile(OUTPUT_FILE_NAME, 
+                         codec='libx264', 
+                         audio_codec='aac', 
+                         fps=24,  # More standard fps
+                         preset='ultrafast',  # Faster encoding for cloud
+                         temp_audiofile='temp-audio.m4a',
+                         remove_temp=True,
+                         verbose=False,
+                         logger=None)
     
     # Clean up downloaded files
     for video_filename in downloaded_files:
