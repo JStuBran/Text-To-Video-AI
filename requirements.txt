@@ -9,8 +9,7 @@ python-dotenv==1.1.1
 flask==3.1.2
 flask-cors==6.0.1
 
-# Audio processing for full pipeline (optional - will fallback if unavailable)
-whisper-timestamped==1.15.9
+# Audio processing for full pipeline - simplified without whisper
 moviepy==1.0.3
 
 # Video processing dependencies for MoviePy 1.0.3 (stable versions)

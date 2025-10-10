@@ -54,8 +54,6 @@ except ImportError as e:
 # Full pipeline imports - required for proper text-to-video functionality
 print("🎬 Loading full text-to-video pipeline...")
 try:
-    print("  • Importing timed captions generator...")
-    from utility.captions.timed_captions_generator import generate_timed_captions
     print("  • Importing video background generator...")
     from utility.video.background_video_generator import generate_video_url
     print("  • Importing render engine...")
@@ -63,15 +61,14 @@ try:
     print("  • Importing video search query generator...")
     from utility.video.video_search_query_generator import getVideoSearchQueriesTimed, merge_empty_intervals
     PIPELINE_AVAILABLE = True
-    print("  ✅ Full text-to-video pipeline loaded successfully")
-    logger.info("Full text-to-video pipeline loaded successfully")
+    print("  ✅ Simplified text-to-video pipeline loaded successfully (no whisper)")
+    logger.info("Simplified text-to-video pipeline loaded successfully (no whisper)")
 except ImportError as e:
     print(f"  ❌ Pipeline import failed: {e}")
     logger.error(f"CRITICAL: Pipeline import failed - {e}")
     PIPELINE_AVAILABLE = False
     
     # Define dummy functions to prevent crashes
-    def generate_timed_captions(*args): raise ImportError("Pipeline not available")
     def generate_video_url(*args): raise ImportError("Pipeline not available") 
     def get_output_media(*args): raise ImportError("Pipeline not available")
     def getVideoSearchQueriesTimed(*args): raise ImportError("Pipeline not available")
@@ -150,13 +147,29 @@ def generate_video_async(job_id, input_text):
         # Execute full text-to-video pipeline (no fallbacks)
         logger.info("Using full text-to-video pipeline")
         
-        # Generate timed captions from audio
+        # Skip whisper - use simple duration-based approach
         jobs[job_id]['progress'] = 65
-        jobs[job_id]['current_step'] = 'Generating timed captions...'
-        timed_captions = generate_timed_captions(audio_filename)
-        logger.info(f"Generated {len(timed_captions)} timed captions")
+        jobs[job_id]['current_step'] = 'Generating video search queries...'
         
-        # Generate video search queries based on script + captions
+        # Get audio duration and create simple timed segments
+        from moviepy.editor import AudioFileClip
+        audio_clip = AudioFileClip(audio_filename)
+        audio_duration = audio_clip.duration
+        audio_clip.close()
+        
+        # Create simple timed captions based on script sentences
+        sentences = response.split('. ')
+        sentence_duration = audio_duration / len(sentences)
+        timed_captions = []
+        for i, sentence in enumerate(sentences):
+            if sentence.strip():
+                start_time = i * sentence_duration
+                end_time = (i + 1) * sentence_duration
+                timed_captions.append([(start_time, end_time), sentence.strip() + '.'])
+        
+        logger.info(f"Created {len(timed_captions)} simple timed captions without whisper")
+        
+        # Generate video search queries based on script + simple captions
         jobs[job_id]['progress'] = 70
         jobs[job_id]['current_step'] = 'Generating video search queries...'
         timed_video_searches = getVideoSearchQueriesTimed(response, timed_captions)
@@ -221,10 +234,7 @@ def health_check():
         if not PIPELINE_AVAILABLE:
             pipeline_issues.append("Full pipeline not available - check MoviePy installation")
         
-        try:
-            import whisper_timestamped
-        except ImportError:
-            pipeline_issues.append("whisper-timestamped not available")
+        # Whisper removed for faster processing
         
         try:
             from moviepy.editor import VideoFileClip
@@ -283,8 +293,8 @@ def generate_video():
         return jsonify({
             'job_id': job_id,
             'status': 'queued',
-            'message': 'Video generation started (Railway lightweight version)',
-            'estimated_time': '2-3 minutes'
+            'message': 'Video generation started (fast pipeline - no whisper)',
+            'estimated_time': '1-2 minutes'
         }), 202
         
     except Exception as e:
