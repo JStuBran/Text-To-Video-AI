@@ -81,7 +81,7 @@ Timed Captions:{}
     )
     
     text = response.choices[0].message.content.strip()
-    text = re.sub('\s+', ' ', text)
+    text = re.sub(r'\s+', ' ', text)
     print("Text", text)
     log_response(LOG_TYPE_GPT,script,text)
     return text
