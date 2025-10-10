@@ -146,17 +146,36 @@ def get_output_media(audio_file_path, timed_captions, background_video_data, vid
         video.duration = audio.duration
         video.audio = audio
 
-    # Check if libx264 encoder is available, fallback to mpeg4 if not
-    def check_encoder_available(encoder):
+    # Check if encoder is available with comprehensive fallback
+    def get_available_codec():
         try:
-            result = subprocess.run(['ffmpeg', '-hide_banner', '-codecs'], 
+            # Check available encoders
+            result = subprocess.run(['ffmpeg', '-hide_banner', '-encoders'], 
                                   capture_output=True, text=True, timeout=10)
-            return encoder in result.stdout
-        except (subprocess.TimeoutExpired, FileNotFoundError, subprocess.SubprocessError):
-            return False
+            encoders_output = result.stdout
+            print(f"Available encoders check completed. Return code: {result.returncode}")
+            
+            # Priority order: libx264 > mpeg4 > libxvid > basic fallback
+            if 'libx264' in encoders_output:
+                print("Using libx264 codec")
+                return 'libx264'
+            elif 'mpeg4' in encoders_output:
+                print("Using mpeg4 codec (libx264 not available)")
+                return 'mpeg4'
+            elif 'libxvid' in encoders_output:
+                print("Using libxvid codec (libx264 and mpeg4 not available)")
+                return 'libxvid'
+            else:
+                print("No preferred codecs found, using basic H.264")
+                return 'h264'
+                
+        except Exception as e:
+            print(f"Error checking encoders: {e}")
+            print("Falling back to basic codec")
+            return 'mpeg4'
     
     # Choose codec based on availability
-    video_codec = 'libx264' if check_encoder_available('libx264') else 'mpeg4'
+    video_codec = get_available_codec()
 
     # Simplified approach: Use first video only and add audio
     if visual_clips:
@@ -178,32 +197,54 @@ def get_output_media(audio_file_path, timed_captions, background_video_data, vid
             # Add audio
             final_video = main_video.set_audio(audio_file_clip)
             
-            # Simple encoding with codec detection
-            final_video.write_videofile(OUTPUT_FILE_NAME, 
-                                      codec=video_codec,
-                                      audio_codec='aac',
-                                      verbose=False,
-                                      logger=None)
+            # Simple encoding with codec detection and error handling
+            print(f"Attempting to write video with codec: {video_codec}")
+            try:
+                final_video.write_videofile(OUTPUT_FILE_NAME, 
+                                          codec=video_codec,
+                                          audio_codec='aac' if video_codec != 'h264' else None,
+                                          verbose=True,
+                                          logger='bar')
+            except Exception as e:
+                print(f"First encoding attempt failed: {e}")
+                print("Trying with minimal parameters...")
+                final_video.write_videofile(OUTPUT_FILE_NAME, 
+                                          codec='mpeg4',
+                                          verbose=True)
         else:
             # Fallback to colored background if no real video
             duration = audio_file_clip.duration
             background = ColorClip(size=(1920, 1080), color=(0, 0, 0), duration=duration)
             final_video = background.set_audio(audio_file_clip)
-            final_video.write_videofile(OUTPUT_FILE_NAME, 
-                                      codec=video_codec,
-                                      audio_codec='aac',
-                                      verbose=False,
-                                      logger=None)
+            print(f"Writing background video with codec: {video_codec}")
+            try:
+                final_video.write_videofile(OUTPUT_FILE_NAME, 
+                                          codec=video_codec,
+                                          audio_codec='aac' if video_codec != 'h264' else None,
+                                          verbose=True,
+                                          logger='bar')
+            except Exception as e:
+                print(f"Background video encoding failed: {e}")
+                final_video.write_videofile(OUTPUT_FILE_NAME, 
+                                          codec='mpeg4',
+                                          verbose=True)
     else:
         # No video clips, create simple background with audio
         duration = audio_file_clip.duration
         background = ColorClip(size=(1920, 1080), color=(0, 0, 0), duration=duration)
         final_video = background.set_audio(audio_file_clip)
-        final_video.write_videofile(OUTPUT_FILE_NAME, 
-                                  codec=video_codec,
-                                  audio_codec='aac',
-                                  verbose=False,
-                                  logger=None)
+        print(f"Writing audio-only video with codec: {video_codec}")
+        try:
+            final_video.write_videofile(OUTPUT_FILE_NAME, 
+                                      codec=video_codec,
+                                      audio_codec='aac' if video_codec != 'h264' else None,
+                                      verbose=True,
+                                      logger='bar')
+        except Exception as e:
+            print(f"Audio-only video encoding failed: {e}")
+            final_video.write_videofile(OUTPUT_FILE_NAME, 
+                                      codec='mpeg4',
+                                      verbose=True)
     
     # Clean up downloaded files
     for video_filename in downloaded_files:
