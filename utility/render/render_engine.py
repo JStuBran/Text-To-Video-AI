@@ -146,16 +146,52 @@ def get_output_media(audio_file_path, timed_captions, background_video_data, vid
         video.duration = audio.duration
         video.audio = audio
 
-    # Use more compatible video encoding settings for Railway/Docker environment
-    video.write_videofile(OUTPUT_FILE_NAME, 
-                         codec='libx264', 
-                         audio_codec='aac', 
-                         fps=24,  # More standard fps
-                         preset='ultrafast',  # Faster encoding for cloud
-                         temp_audiofile='temp-audio.m4a',
-                         remove_temp=True,
-                         verbose=False,
-                         logger=None)
+    # Simplified approach: Use first video only and add audio
+    if visual_clips:
+        # Take the first video clip and extend it for the full duration
+        main_video = visual_clips[0]
+        if hasattr(main_video, 'filename'):  # It's a video file
+            # Loop the video to match audio duration
+            audio_duration = audio_file_clip.duration
+            video_duration = main_video.duration
+            
+            if video_duration < audio_duration:
+                # Loop the video to fill the audio duration
+                loops_needed = int(audio_duration / video_duration) + 1
+                main_video = main_video.loop(loops_needed)
+            
+            # Trim to exact audio length
+            main_video = main_video.subclip(0, audio_duration)
+            
+            # Add audio
+            final_video = main_video.set_audio(audio_file_clip)
+            
+            # Simple encoding with minimal parameters
+            final_video.write_videofile(OUTPUT_FILE_NAME, 
+                                      codec='libx264',
+                                      audio_codec='aac',
+                                      verbose=False,
+                                      logger=None)
+        else:
+            # Fallback to colored background if no real video
+            duration = audio_file_clip.duration
+            background = ColorClip(size=(1920, 1080), color=(0, 0, 0), duration=duration)
+            final_video = background.set_audio(audio_file_clip)
+            final_video.write_videofile(OUTPUT_FILE_NAME, 
+                                      codec='libx264',
+                                      audio_codec='aac',
+                                      verbose=False,
+                                      logger=None)
+    else:
+        # No video clips, create simple background with audio
+        duration = audio_file_clip.duration
+        background = ColorClip(size=(1920, 1080), color=(0, 0, 0), duration=duration)
+        final_video = background.set_audio(audio_file_clip)
+        final_video.write_videofile(OUTPUT_FILE_NAME, 
+                                  codec='libx264',
+                                  audio_codec='aac',
+                                  verbose=False,
+                                  logger=None)
     
     # Clean up downloaded files
     for video_filename in downloaded_files:
