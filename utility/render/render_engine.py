@@ -177,25 +177,29 @@ def get_output_media(audio_file_path, timed_captions, background_video_data, vid
     # Choose codec based on availability
     video_codec = get_available_codec()
 
-    # Simplified approach: Use first video only and add audio
+    # Handle video-only or video+audio scenarios
     if visual_clips:
-        # Take the first video clip and extend it for the full duration
+        # Take the first video clip 
         main_video = visual_clips[0]
         if hasattr(main_video, 'filename'):  # It's a video file
-            # Loop the video to match audio duration
-            audio_duration = audio_file_clip.duration
-            video_duration = main_video.duration
-            
-            if video_duration < audio_duration:
-                # Loop the video to fill the audio duration
-                loops_needed = int(audio_duration / video_duration) + 1
-                main_video = main_video.loop(loops_needed)
-            
-            # Trim to exact audio length
-            main_video = main_video.subclip(0, audio_duration)
-            
-            # Add audio
-            final_video = main_video.set_audio(audio_file_clip)
+            if audio_clips:  # Has audio
+                # Loop the video to match audio duration
+                audio_duration = audio_file_clip.duration
+                video_duration = main_video.duration
+                
+                if video_duration < audio_duration:
+                    # Loop the video to fill the audio duration
+                    loops_needed = int(audio_duration / video_duration) + 1
+                    main_video = main_video.loop(loops_needed)
+                
+                # Trim to exact audio length
+                main_video = main_video.subclip(0, audio_duration)
+                
+                # Add audio
+                final_video = main_video.set_audio(audio_file_clip)
+            else:  # Video only, no audio
+                print("Processing video-only clip (no audio)")
+                final_video = main_video
             
             # Simple encoding with codec detection and error handling
             print(f"Attempting to write video with codec: {video_codec}")
@@ -213,9 +217,14 @@ def get_output_media(audio_file_path, timed_captions, background_video_data, vid
                                           verbose=True)
         else:
             # Fallback to colored background if no real video
-            duration = audio_file_clip.duration
-            background = ColorClip(size=(1920, 1080), color=(0, 0, 0), duration=duration)
-            final_video = background.set_audio(audio_file_clip)
+            if audio_clips:
+                duration = audio_file_clip.duration
+                background = ColorClip(size=(1920, 1080), color=(0, 0, 0), duration=duration)
+                final_video = background.set_audio(audio_file_clip)
+            else:
+                # Video-only with no real video file - use a short black clip
+                print("Creating short black video (no audio, no real video)")
+                final_video = ColorClip(size=(1920, 1080), color=(0, 0, 0), duration=5)
             print(f"Writing background video with codec: {video_codec}")
             try:
                 final_video.write_videofile(OUTPUT_FILE_NAME, 
@@ -229,10 +238,16 @@ def get_output_media(audio_file_path, timed_captions, background_video_data, vid
                                           codec='mpeg4',
                                           verbose=True)
     else:
-        # No video clips, create simple background with audio
-        duration = audio_file_clip.duration
-        background = ColorClip(size=(1920, 1080), color=(0, 0, 0), duration=duration)
-        final_video = background.set_audio(audio_file_clip)
+        # No video clips at all
+        if audio_clips:
+            # Create simple background with audio
+            duration = audio_file_clip.duration
+            background = ColorClip(size=(1920, 1080), color=(0, 0, 0), duration=duration)
+            final_video = background.set_audio(audio_file_clip)
+        else:
+            # No video, no audio - create minimal clip
+            print("No content provided, creating minimal black video")
+            final_video = ColorClip(size=(1920, 1080), color=(0, 0, 0), duration=5)
         print(f"Writing audio-only video with codec: {video_codec}")
         try:
             final_video.write_videofile(OUTPUT_FILE_NAME, 
