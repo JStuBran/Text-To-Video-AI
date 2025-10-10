@@ -12,3 +12,6 @@ __pycache__/
 rendered_video.mp4
 audio_tts.wav
 test_audio.wav
+
+# Editor backup files
+*.save

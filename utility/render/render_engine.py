@@ -146,6 +146,18 @@ def get_output_media(audio_file_path, timed_captions, background_video_data, vid
         video.duration = audio.duration
         video.audio = audio
 
+    # Check if libx264 encoder is available, fallback to mpeg4 if not
+    def check_encoder_available(encoder):
+        try:
+            result = subprocess.run(['ffmpeg', '-hide_banner', '-codecs'], 
+                                  capture_output=True, text=True, timeout=10)
+            return encoder in result.stdout
+        except (subprocess.TimeoutExpired, FileNotFoundError, subprocess.SubprocessError):
+            return False
+    
+    # Choose codec based on availability
+    video_codec = 'libx264' if check_encoder_available('libx264') else 'mpeg4'
+
     # Simplified approach: Use first video only and add audio
     if visual_clips:
         # Take the first video clip and extend it for the full duration
@@ -166,9 +178,9 @@ def get_output_media(audio_file_path, timed_captions, background_video_data, vid
             # Add audio
             final_video = main_video.set_audio(audio_file_clip)
             
-            # Simple encoding with minimal parameters
+            # Simple encoding with codec detection
             final_video.write_videofile(OUTPUT_FILE_NAME, 
-                                      codec='libx264',
+                                      codec=video_codec,
                                       audio_codec='aac',
                                       verbose=False,
                                       logger=None)
@@ -178,7 +190,7 @@ def get_output_media(audio_file_path, timed_captions, background_video_data, vid
             background = ColorClip(size=(1920, 1080), color=(0, 0, 0), duration=duration)
             final_video = background.set_audio(audio_file_clip)
             final_video.write_videofile(OUTPUT_FILE_NAME, 
-                                      codec='libx264',
+                                      codec=video_codec,
                                       audio_codec='aac',
                                       verbose=False,
                                       logger=None)
@@ -188,7 +200,7 @@ def get_output_media(audio_file_path, timed_captions, background_video_data, vid
         background = ColorClip(size=(1920, 1080), color=(0, 0, 0), duration=duration)
         final_video = background.set_audio(audio_file_clip)
         final_video.write_videofile(OUTPUT_FILE_NAME, 
-                                  codec='libx264',
+                                  codec=video_codec,
                                   audio_codec='aac',
                                   verbose=False,
                                   logger=None)
