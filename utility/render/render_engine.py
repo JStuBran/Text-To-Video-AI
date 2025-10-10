@@ -15,7 +15,7 @@ try:
     
     # Import required modules
     from moviepy.editor import (AudioFileClip, CompositeVideoClip, CompositeAudioClip, ImageClip,
-                                TextClip, VideoFileClip)
+                                TextClip, VideoFileClip, ColorClip)
     from moviepy.audio.fx.audio_loop import audio_loop
     from moviepy.audio.fx.audio_normalize import audio_normalize
     MOVIEPY_AVAILABLE = True
@@ -38,12 +38,31 @@ except ImportError as e:
     MOVIEPY_AVAILABLE = False
 
 def download_file(url, filename):
-    with open(filename, 'wb') as f:
-        headers = {
+    headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-        }
-        response = requests.get(url, headers=headers)
-        f.write(response.content)
+    }
+    
+    try:
+        print(f"Downloading video from: {url}")
+        response = requests.get(url, headers=headers, timeout=30)
+        response.raise_for_status()  # Raise exception for bad status codes
+        
+        if len(response.content) == 0:
+            raise ValueError(f"Downloaded file is empty: {url}")
+        
+        with open(filename, 'wb') as f:
+            f.write(response.content)
+        
+        # Verify the file was written and has content
+        if not os.path.exists(filename) or os.path.getsize(filename) == 0:
+            raise ValueError(f"Failed to write video file or file is empty: {filename}")
+            
+        print(f"Successfully downloaded {len(response.content)} bytes to {filename}")
+        return True
+        
+    except Exception as e:
+        print(f"Error downloading {url}: {e}")
+        return False
 
 def search_program(program_name):
     try: 
@@ -71,27 +90,53 @@ def get_output_media(audio_file_path, timed_captions, background_video_data, vid
     visual_clips = []
     downloaded_files = []
     for (t1, t2), video_url in background_video_data:
+        if video_url is None:
+            print(f"Skipping empty video URL for segment {t1}-{t2}")
+            continue
+            
         # Download the video file
         video_filename = tempfile.NamedTemporaryFile(delete=False).name
-        download_file(video_url, video_filename)
+        download_success = download_file(video_url, video_filename)
+        
+        if not download_success:
+            print(f"Failed to download video for segment {t1}-{t2}, skipping")
+            continue
+            
         downloaded_files.append(video_filename)
         
-        # Create VideoFileClip from the downloaded file
-        video_clip = VideoFileClip(video_filename)
-        video_clip = video_clip.set_start(t1)
-        video_clip = video_clip.set_end(t2)
-        visual_clips.append(video_clip)
+        try:
+            # Create VideoFileClip from the downloaded file
+            video_clip = VideoFileClip(video_filename)
+            video_clip = video_clip.set_start(t1)
+            video_clip = video_clip.set_end(t2)
+            visual_clips.append(video_clip)
+            print(f"Successfully processed video clip for segment {t1}-{t2}")
+        except Exception as e:
+            print(f"Failed to process video file {video_filename} for segment {t1}-{t2}: {e}")
+            # Remove the corrupted file from the list so it gets cleaned up
+            if video_filename in downloaded_files:
+                downloaded_files.remove(video_filename)
+            continue
     
     audio_clips = []
     audio_file_clip = AudioFileClip(audio_file_path)
     audio_clips.append(audio_file_clip)
 
+    # Add text captions  
     for (t1, t2), text in timed_captions:
         text_clip = TextClip(txt=text, fontsize=100, color="white", stroke_width=3, stroke_color="black", method="label")
         text_clip = text_clip.set_start(t1)
         text_clip = text_clip.set_end(t2)
         text_clip = text_clip.set_position(["center", 800])
         visual_clips.append(text_clip)
+
+    # If no video clips were successfully processed, create a simple colored background
+    video_clips_count = sum(1 for clip in visual_clips if hasattr(clip, 'filename'))
+    if video_clips_count == 0:
+        print("No video clips available, creating colored background")
+        duration = audio_file_clip.duration
+        background = ColorClip(size=(1920, 1080), color=(0, 0, 0), duration=duration)
+        visual_clips.insert(0, background)
 
     video = CompositeVideoClip(visual_clips)
     
