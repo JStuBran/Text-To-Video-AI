@@ -122,13 +122,9 @@ def get_output_media(audio_file_path, timed_captions, background_video_data, vid
     audio_file_clip = AudioFileClip(audio_file_path)
     audio_clips.append(audio_file_clip)
 
-    # Add text captions  
-    for (t1, t2), text in timed_captions:
-        text_clip = TextClip(txt=text, fontsize=100, color="white", stroke_width=3, stroke_color="black", method="label")
-        text_clip = text_clip.set_start(t1)
-        text_clip = text_clip.set_end(t2)
-        text_clip = text_clip.set_position(["center", 800])
-        visual_clips.append(text_clip)
+    # Skip text overlays to avoid ImageMagick font issues
+    # Audio narration provides the content, video clips provide visuals
+    print(f"Skipping text overlays for {len(timed_captions)} caption segments")
 
     # If no video clips were successfully processed, create a simple colored background
     video_clips_count = sum(1 for clip in visual_clips if hasattr(clip, 'filename'))
