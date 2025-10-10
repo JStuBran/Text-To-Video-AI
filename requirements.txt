@@ -11,11 +11,11 @@ flask-cors==6.0.1
 
 # Audio processing for full pipeline (optional - will fallback if unavailable)
 whisper-timestamped==1.15.9
-moviepy==2.0.0
+moviepy==1.0.3
 
-# Video processing dependencies for MoviePy (compatible versions)
-imageio==2.34.0
-imageio-ffmpeg==0.5.1
+# Video processing dependencies for MoviePy 1.0.3 (stable versions)
+imageio==2.25.1
+imageio-ffmpeg==0.4.8
 decorator==5.1.1
 proglog==0.1.10
 
